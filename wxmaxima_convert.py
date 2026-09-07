@@ -29,7 +29,10 @@ CELL_BEGIN = "/* [wxMaxima: input   start ] */"
 CELL_END = "/* [wxMaxima: input   end   ] */"
 COMMENT_BEGIN = "/* [wxMaxima: comment start ] */"
 COMMENT_END = "/* [wxMaxima: comment end   ] */"
-VERSION_PATTERN = re.compile(r"Created\s+(?:using\s+)?wxMaxima\s+([0-9]+(?:\.[0-9]+)+)", re.IGNORECASE)
+VERSION_PATTERN = re.compile(
+    r"Created\s+(?:using|by)\s+wxMaxima\s+([0-9]+(?:\.[0-9]+)+)",
+    re.IGNORECASE,
+)
 
 
 def _local_name(tag: str) -> str:
