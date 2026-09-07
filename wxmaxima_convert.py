@@ -29,6 +29,7 @@ CELL_BEGIN = "/* [wxMaxima: input   start ] */"
 CELL_END = "/* [wxMaxima: input   end   ] */"
 COMMENT_BEGIN = "/* [wxMaxima: comment start ] */"
 COMMENT_END = "/* [wxMaxima: comment end   ] */"
+VERSION_PATTERN = re.compile(r"Created\s+(?:using\s+)?wxMaxima\s+([0-9]+(?:\.[0-9]+)+)", re.IGNORECASE)
 
 
 def _local_name(tag: str) -> str:
@@ -37,6 +38,24 @@ def _local_name(tag: str) -> str:
 
 def _text(element: ET.Element) -> str:
     return "".join(element.itertext()).strip()
+
+
+def _cell_text(element: ET.Element) -> str:
+    lines = [
+        "".join(line.itertext())
+        for line in element.iter()
+        if _local_name(line.tag).lower() == "line"
+    ]
+    if lines:
+        return "\n".join(lines).strip()
+    return _text(element)
+
+
+def _wxmaxima_version(xml_bytes: bytes) -> str:
+    match = VERSION_PATTERN.search(xml_bytes.decode("utf-8", "replace"))
+    if not match:
+        raise ValueError("no se pudo identificar la versión de wxMaxima en content.xml")
+    return match.group(1)
 
 
 def _find_document_xml(archive: zipfile.ZipFile) -> str:
@@ -72,7 +91,7 @@ def _extract_cells(xml_bytes: bytes) -> list[tuple[str, str]]:
             (child for child in element.iter() if _local_name(child.tag).lower() in {"input", "text"}),
             None,
         )
-        value = _text(input_element) if input_element is not None else _text(element)
+        value = _cell_text(input_element) if input_element is not None else _cell_text(element)
         if not value:
             continue
         kind = "comment" if "text" in cell_type or "comment" in cell_type else "input"
@@ -104,11 +123,13 @@ def _embedded_archive(text: str) -> bytes | None:
 
 def wxmx_to_wxm(source: Path, destination: Path) -> None:
     data = source.read_bytes()
-    cells = _extract_cells(_read_wxmx_document(source))
+    xml = _read_wxmx_document(source)
+    version = _wxmaxima_version(xml)
+    cells = _extract_cells(xml)
 
     chunks = [
-        "/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ] */",
-        f"/* Converted from {source.name}; original archive is preserved below. */",
+        "/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/",
+        f"/* [ Created with wxMaxima version {version} ] */",
         "",
     ]
     for kind, value in cells:
@@ -116,7 +137,16 @@ def wxmx_to_wxm(source: Path, destination: Path) -> None:
             chunks.extend((COMMENT_BEGIN, value, COMMENT_END, ""))
         else:
             chunks.extend((CELL_BEGIN, value, CELL_END, ""))
-    chunks.extend(("", _archive_block(data), ""))
+    chunks.extend(
+        (
+            "",
+            _archive_block(data),
+            "",
+            '/* Old versions of Maxima abort on loading files that end in a comment. */',
+            f'"Created with wxMaxima {version}"$',
+            "",
+        )
+    )
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text("\n".join(chunks), encoding="utf-8", newline="\n")
 

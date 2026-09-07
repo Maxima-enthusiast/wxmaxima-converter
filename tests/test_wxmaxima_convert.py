@@ -8,8 +8,9 @@ from wxmaxima_convert import _selected_files, convert_tree, wxm_to_wxmx, wxmx_to
 
 def make_wxmx(path: Path) -> bytes:
     content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created using wxMaxima 23.05.1 -->
 <wxMaximaDocument version="1.5">
-  <cell type="code"><input>2 + 2;</input></cell>
+  <cell type="code"><input><editor type="input"><line>2 + 2;</line></editor></input></cell>
   <cell type="text"><text>Example note</text></cell>
 </wxMaximaDocument>
 """
@@ -32,7 +33,10 @@ class ConverterTests(unittest.TestCase):
             text = converted.read_text(encoding="utf-8")
             self.assertIn("2 + 2;", text)
             self.assertIn("Example note", text)
+            self.assertIn("[ Created with wxMaxima version 23.05.1 ]", text)
+            self.assertIn('"Created with wxMaxima 23.05.1"$', text)
             self.assertIn("WXMAXIMA-CONVERTER: original wxmx", text)
+            self.assertTrue(text.rstrip().endswith('"Created with wxMaxima 23.05.1"$'))
             restored = tmp_path / "restored.wxmx"
             wxm_to_wxmx(converted, restored)
             self.assertEqual(restored.read_bytes(), original_bytes)

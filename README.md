@@ -70,6 +70,12 @@ el archivo original en un bloque base64 delimitado. Si ese `.wxm` se vuelve a
 convertir, el `.wxmx` original se restaura byte por byte. Los `.wxm` creados
 por otras herramientas se empaquetan como un documento XML de celdas.
 
+La salida `.wxm` usa la sintaxis batch nativa de wxMaxima: obtiene la versión
+de wxMaxima del comentario `Created using wxMaxima ...` de `content.xml`,
+escribe las cabeceras estándar, conserva cada línea de entrada dentro de
+marcadores `input` y termina con el comentario de compatibilidad seguido de
+`"Created with wxMaxima X.Y.Z"$`.
+
 La salida se escribe en un directorio separado. El modo remoto usa un clon
 temporal que se elimina al terminar; `--keep-clone` permite conservarlo.
 
