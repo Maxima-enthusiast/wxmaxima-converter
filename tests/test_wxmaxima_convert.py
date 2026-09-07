@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from wxmaxima_convert import convert_tree, wxm_to_wxmx, wxmx_to_wxm
+from wxmaxima_convert import _selected_files, convert_tree, wxm_to_wxmx, wxmx_to_wxm
 
 
 def make_wxmx(path: Path) -> bytes:
@@ -72,6 +72,17 @@ class ConverterTests(unittest.TestCase):
             self.assertEqual(convert_tree(tmp_path, output, "wxmx", ["selected.wxm"]), 1)
             self.assertTrue((output / "selected.wxmx").exists())
             self.assertFalse((output / "ignored.wxmx").exists())
+
+    def test_all_only_processes_valid_wxmaxima_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            tmp_path = Path(directory)
+            valid = tmp_path / "valid.wxmx"
+            make_wxmx(valid)
+            (tmp_path / "unrelated.wxmx").write_bytes(b"not wxMaxima")
+
+            selected = _selected_files(tmp_path, [], "wxm", select_all=True)
+
+            self.assertEqual(selected, [valid])
 
 
 if __name__ == "__main__":

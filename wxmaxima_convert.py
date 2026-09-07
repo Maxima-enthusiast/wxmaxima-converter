@@ -15,6 +15,7 @@ import base64
 import os
 import re
 import shutil
+import stat
 import subprocess
 import tempfile
 import urllib.parse
@@ -171,10 +172,24 @@ def _clone(url: str, destination: Path, commit: str | None) -> None:
         )
 
 
-def _selected_files(source: Path, paths: list[str], target: str) -> list[Path]:
+def _remove_clone(path: Path) -> None:
+    def make_writable(
+        function: object, failed_path: str, _: object
+    ) -> None:
+        os.chmod(failed_path, stat.S_IWRITE)
+        function(failed_path)
+
+    shutil.rmtree(path, onerror=make_writable)
+
+
+def _selected_files(
+    source: Path, paths: list[str], target: str, select_all: bool = False
+) -> list[Path]:
     suffix = ".wxmx" if target == "wxmx" else ".wxm"
     opposite = ".wxm" if target == "wxmx" else ".wxmx"
     files: set[Path] = set()
+    if select_all:
+        paths = ["."]
     invalid_explicit: list[Path] = []
     for requested in paths:
         candidate = (source / requested).resolve()
@@ -230,11 +245,16 @@ def parse_args() -> argparse.Namespace:
     input_group.add_argument("--repo", help="URL HTTPS de un repositorio de GitHub")
     input_group.add_argument("--source", type=Path, help="directorio local del repositorio")
     parser.add_argument("--to", choices=("wxm", "wxmx"), required=True, help="formato de salida")
-    parser.add_argument(
+    selection_group = parser.add_mutually_exclusive_group(required=True)
+    selection_group.add_argument(
         "--path",
         action="append",
-        required=True,
         help="ruta de archivo o directorio relativa al repositorio (se puede repetir)",
+    )
+    selection_group.add_argument(
+        "--all",
+        action="store_true",
+        help="convertir todos los documentos wxMaxima válidos del commit",
     )
     parser.add_argument(
         "--commit",
@@ -259,7 +279,13 @@ def main() -> int:
             source = args.source.resolve()
             if not source.is_dir():
                 raise NotADirectoryError(f"no es un directorio: {source}")
-        count = convert_tree(source, args.output.resolve(), args.to, args.path)
+        paths = args.path or []
+        count = convert_tree(
+            source,
+            args.output.resolve(),
+            args.to,
+            paths if not args.all else ["."],
+        )
         print(f"Convertidos {count} archivos a .{args.to} en {args.output.resolve()}")
         return 0
     except (OSError, ValueError, ET.ParseError, zipfile.BadZipFile) as exc:
@@ -267,7 +293,7 @@ def main() -> int:
         return 2
     finally:
         if temporary and not args.keep_clone:
-            shutil.rmtree(temporary, ignore_errors=False)
+            _remove_clone(temporary)
 
 
 if __name__ == "__main__":

@@ -48,6 +48,22 @@ python wxmaxima_convert.py `
 repetirse. Los archivos `.wxmx` se validan como ZIP con XML raíz
 `wxMaximaDocument`; los `.wxm` deben contener marcas reconocibles de wxMaxima.
 
+Para convertir todos los documentos wxMaxima válidos presentes en un commit,
+use el modo explícito `--all`:
+
+```powershell
+python wxmaxima_convert.py `
+  --repo https://github.com/Observatorio-de-Matematica/WxMaxima.git `
+  --commit 099ede6eef8b10d77af2b3586ab95250d5f5891a `
+  --all `
+  --to wxm `
+  --output .\salida
+```
+
+`--all` sólo considera archivos con la extensión esperada que además pasan la
+validación interna de wxMaxima; no convierte archivos arbitrarios que coincidan
+por nombre. Es mutuamente excluyente con `--path`.
+
 `.wxmx` es un ZIP que puede contener XML, imágenes y otros recursos, mientras
 `.wxm` es texto plano. Al convertir `.wxmx` a `.wxm`, la herramienta incluye
 el archivo original en un bloque base64 delimitado. Si ese `.wxm` se vuelve a
