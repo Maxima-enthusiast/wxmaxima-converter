@@ -11,7 +11,6 @@ images and metadata that cannot be represented by the batch-file format.
 from __future__ import annotations
 
 import argparse
-import base64
 import os
 import re
 import shutil
@@ -23,8 +22,6 @@ import zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-ARCHIVE_BEGIN = "/* WXMAXIMA-CONVERTER: original wxmx (base64) BEGIN */"
-ARCHIVE_END = "/* WXMAXIMA-CONVERTER: original wxmx (base64) END */"
 CELL_BEGIN = "/* [wxMaxima: input   start ] */"
 CELL_END = "/* [wxMaxima: input   end   ] */"
 COMMENT_BEGIN = "/* [wxMaxima: comment start ] */"
@@ -102,30 +99,7 @@ def _extract_cells(xml_bytes: bytes) -> list[tuple[str, str]]:
     return cells
 
 
-def _archive_block(data: bytes) -> str:
-    encoded = base64.b64encode(data).decode("ascii")
-    lines = [ARCHIVE_BEGIN]
-    lines.extend(encoded[index : index + 76] for index in range(0, len(encoded), 76))
-    lines.append(ARCHIVE_END)
-    return "\n".join(lines)
-
-
-def _embedded_archive(text: str) -> bytes | None:
-    match = re.search(
-        re.escape(ARCHIVE_BEGIN) + r"\s*(.*?)\s*" + re.escape(ARCHIVE_END),
-        text,
-        re.DOTALL,
-    )
-    if not match:
-        return None
-    try:
-        return base64.b64decode(re.sub(r"\s+", "", match.group(1)), validate=True)
-    except ValueError as exc:
-        raise ValueError("el bloque wxmx incrustado no es base64 válido") from exc
-
-
 def wxmx_to_wxm(source: Path, destination: Path) -> None:
-    data = source.read_bytes()
     xml = _read_wxmx_document(source)
     version = _wxmaxima_version(xml)
     cells = _extract_cells(xml)
@@ -142,8 +116,6 @@ def wxmx_to_wxm(source: Path, destination: Path) -> None:
             chunks.extend((CELL_BEGIN, value, CELL_END, ""))
     chunks.extend(
         (
-            "",
-            _archive_block(data),
             "",
             '/* Old versions of Maxima abort on loading files that end in a comment. */',
             f'"Created with wxMaxima {version}"$',
@@ -173,11 +145,7 @@ def wxm_to_wxmx(source: Path, destination: Path) -> None:
     text = source.read_text(encoding="utf-8")
     if "wxMaxima" not in text:
         raise ValueError(f"{source} no parece un archivo de texto wxMaxima")
-    embedded = _embedded_archive(text)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    if embedded is not None:
-        destination.write_bytes(embedded)
-        return
     xml = _xml_for_wxm(text)
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("content.xml", xml)

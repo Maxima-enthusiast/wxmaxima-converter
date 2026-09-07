@@ -21,11 +21,11 @@ def make_wxmx(path: Path) -> bytes:
 
 
 class ConverterTests(unittest.TestCase):
-    def test_wxmx_to_wxm_keeps_readable_cells_and_archive(self):
+    def test_wxmx_to_wxm_creates_clean_batch_file(self):
         with tempfile.TemporaryDirectory() as directory:
             tmp_path = Path(directory)
             original = tmp_path / "sample.wxmx"
-            original_bytes = make_wxmx(original)
+            make_wxmx(original)
             converted = tmp_path / "sample.wxm"
 
             wxmx_to_wxm(original, converted)
@@ -35,11 +35,9 @@ class ConverterTests(unittest.TestCase):
             self.assertIn("Example note", text)
             self.assertIn("[ Created with wxMaxima version 23.05.1 ]", text)
             self.assertIn('"Created with wxMaxima 23.05.1"$', text)
-            self.assertIn("WXMAXIMA-CONVERTER: original wxmx", text)
+            self.assertNotIn("WXMAXIMA-CONVERTER", text)
+            self.assertNotIn("base64", text)
             self.assertTrue(text.rstrip().endswith('"Created with wxMaxima 23.05.1"$'))
-            restored = tmp_path / "restored.wxmx"
-            wxm_to_wxmx(converted, restored)
-            self.assertEqual(restored.read_bytes(), original_bytes)
 
     def test_wxm_to_wxmx_creates_document(self):
         with tempfile.TemporaryDirectory() as directory:

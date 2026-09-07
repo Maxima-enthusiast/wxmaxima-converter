@@ -65,10 +65,11 @@ validación interna de wxMaxima; no convierte archivos arbitrarios que coincidan
 por nombre. Es mutuamente excluyente con `--path`.
 
 `.wxmx` es un ZIP que puede contener XML, imágenes y otros recursos, mientras
-`.wxm` es texto plano. Al convertir `.wxmx` a `.wxm`, la herramienta incluye
-el archivo original en un bloque base64 delimitado. Si ese `.wxm` se vuelve a
-convertir, el `.wxmx` original se restaura byte por byte. Los `.wxm` creados
-por otras herramientas se empaquetan como un documento XML de celdas.
+`.wxm` es texto plano. La salida `.wxm` contiene únicamente texto batch y no
+incluye el ZIP original ni datos base64. Al convertir posteriormente ese
+`.wxm` a `.wxmx`, se reconstruye un documento XML de celdas; los recursos
+binarios y metadatos visuales del `.wxmx` original no pueden representarse en
+el formato batch y no se conservan.
 
 La salida `.wxm` usa la sintaxis batch nativa de wxMaxima: obtiene la versión
 de wxMaxima del comentario `Created using wxMaxima ...` de `content.xml`,
